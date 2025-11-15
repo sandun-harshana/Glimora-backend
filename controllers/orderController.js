@@ -496,6 +496,101 @@ export async function updatePaymentStatus(req, res) {
 	}
 }
 
+// Approve payment (admin)
+export async function approvePayment(req, res) {
+	if (!isAdmin(req)) {
+		res.status(403).json({
+			message: "You are not authorized",
+		});
+		return;
+	}
+
+	const orderID = req.params.orderID;
+
+	try {
+		const order = await Order.findOne({ orderID: orderID });
+
+		if (!order) {
+			res.status(404).json({
+				message: "Order not found",
+			});
+			return;
+		}
+
+		if (order.paymentStatus !== "pending") {
+			res.status(400).json({
+				message: "Only pending payments can be approved",
+			});
+			return;
+		}
+
+		await Order.updateOne(
+			{ orderID: orderID },
+			{ 
+				paymentStatus: "paid",
+				"paymentDetails.paymentDate": new Date()
+			}
+		);
+
+		res.json({
+			message: "Payment approved successfully",
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({
+			message: "Failed to approve payment",
+		});
+	}
+}
+
+// Reject payment (admin)
+export async function rejectPayment(req, res) {
+	if (!isAdmin(req)) {
+		res.status(403).json({
+			message: "You are not authorized",
+		});
+		return;
+	}
+
+	const orderID = req.params.orderID;
+	const reason = req.body.reason || "Payment verification failed";
+
+	try {
+		const order = await Order.findOne({ orderID: orderID });
+
+		if (!order) {
+			res.status(404).json({
+				message: "Order not found",
+			});
+			return;
+		}
+
+		if (order.paymentStatus !== "pending") {
+			res.status(400).json({
+				message: "Only pending payments can be rejected",
+			});
+			return;
+		}
+
+		await Order.updateOne(
+			{ orderID: orderID },
+			{ 
+				paymentStatus: "unpaid",
+				"paymentDetails.rejectionReason": reason
+			}
+		);
+
+		res.json({
+			message: "Payment rejected successfully",
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({
+			message: "Failed to reject payment",
+		});
+	}
+}
+
 // Update tracking information (admin)
 export async function updateTrackingInfo(req, res) {
 	if (!isAdmin(req)) {

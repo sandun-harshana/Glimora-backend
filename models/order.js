@@ -92,6 +92,10 @@ const orderSchema = new mongoose.Schema(
             accountNumber: {
                 type: String,
                 default: ""
+            },
+            rejectionReason: {
+                type: String,
+                default: ""
             }
         },
         shippingStatus: {

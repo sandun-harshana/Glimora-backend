@@ -355,3 +355,177 @@ export async function sendAdminMessage(req, res) {
 		});
 	}
 }
+
+// Delete message (user can delete their own messages)
+export async function deleteUserMessage(req, res) {
+	if (!req.user) {
+		res.status(401).json({
+			message: "Unauthorized",
+		});
+		return;
+	}
+
+	const messageId = req.params.id;
+
+	try {
+		const message = await Message.findById(messageId);
+
+		if (!message) {
+			res.status(404).json({
+				message: "Message not found",
+			});
+			return;
+		}
+
+		// Users can only delete their own messages
+		if (message.senderEmail !== req.user.email) {
+			res.status(403).json({
+				message: "You can only delete your own messages",
+			});
+			return;
+		}
+
+		await Message.findByIdAndDelete(messageId);
+
+		res.json({
+			message: "Message deleted successfully",
+		});
+	} catch (err) {
+		console.error("Error deleting message:", err);
+		res.status(500).json({
+			message: "Failed to delete message",
+		});
+	}
+}
+
+// Toggle archive status for user
+export async function toggleArchiveMessage(req, res) {
+	if (!req.user) {
+		res.status(401).json({
+			message: "Unauthorized",
+		});
+		return;
+	}
+
+	const messageId = req.params.id;
+
+	try {
+		const message = await Message.findById(messageId);
+
+		if (!message) {
+			res.status(404).json({
+				message: "Message not found",
+			});
+			return;
+		}
+
+		// Users can only archive their own messages
+		if (message.senderEmail !== req.user.email) {
+			res.status(403).json({
+				message: "You can only archive your own messages",
+			});
+			return;
+		}
+
+		message.archived = !message.archived;
+		await message.save();
+
+		res.json({
+			message: message.archived ? "Message archived" : "Message unarchived",
+			data: message,
+		});
+	} catch (err) {
+		console.error("Error toggling archive:", err);
+		res.status(500).json({
+			message: "Failed to toggle archive",
+		});
+	}
+}
+
+// Toggle star status for user
+export async function toggleStarMessage(req, res) {
+	if (!req.user) {
+		res.status(401).json({
+			message: "Unauthorized",
+		});
+		return;
+	}
+
+	const messageId = req.params.id;
+
+	try {
+		const message = await Message.findById(messageId);
+
+		if (!message) {
+			res.status(404).json({
+				message: "Message not found",
+			});
+			return;
+		}
+
+		// Users can only star their own messages
+		if (message.senderEmail !== req.user.email) {
+			res.status(403).json({
+				message: "You can only star your own messages",
+			});
+			return;
+		}
+
+		message.starred = !message.starred;
+		await message.save();
+
+		res.json({
+			message: message.starred ? "Message starred" : "Message unstarred",
+			data: message,
+		});
+	} catch (err) {
+		console.error("Error toggling star:", err);
+		res.status(500).json({
+			message: "Failed to toggle star",
+		});
+	}
+}
+
+// Mark message as read by user
+export async function markUserMessageRead(req, res) {
+	if (!req.user) {
+		res.status(401).json({
+			message: "Unauthorized",
+		});
+		return;
+	}
+
+	const messageId = req.params.id;
+
+	try {
+		const message = await Message.findById(messageId);
+
+		if (!message) {
+			res.status(404).json({
+				message: "Message not found",
+			});
+			return;
+		}
+
+		// Users can only mark their own messages as read
+		if (message.senderEmail !== req.user.email) {
+			res.status(403).json({
+				message: "Forbidden",
+			});
+			return;
+		}
+
+		message.userRead = true;
+		await message.save();
+
+		res.json({
+			message: "Message marked as read",
+			data: message,
+		});
+	} catch (err) {
+		console.error("Error marking message as read:", err);
+		res.status(500).json({
+			message: "Failed to mark message as read",
+		});
+	}
+}

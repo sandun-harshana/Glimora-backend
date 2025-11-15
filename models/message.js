@@ -70,6 +70,21 @@ const messageSchema = new mongoose.Schema({
 		type: Boolean,
 		default: false,
 	},
+	// Whether user has read this message (for messages from admin)
+	userRead: {
+		type: Boolean,
+		default: true, // Default true for user-initiated messages
+	},
+	// Whether message is archived by user
+	archived: {
+		type: Boolean,
+		default: false,
+	},
+	// Whether message is starred/important by user
+	starred: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const Message = mongoose.model("Message", messageSchema);
