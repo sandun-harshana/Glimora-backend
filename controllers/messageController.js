@@ -62,8 +62,12 @@ export async function getUserMessages(req, res) {
 	}
 
 	try {
+		// Fetch messages sent BY user OR messages sent TO user (from admin)
 		const messages = await Message.find({
-			senderEmail: req.user.email,
+			$or: [
+				{ senderEmail: req.user.email }, // Messages sent by user
+				{ recipientEmail: req.user.email } // Messages sent to user by admin
+			]
 		}).sort({ createdAt: -1 });
 
 		res.json(messages);
@@ -326,20 +330,14 @@ export async function sendAdminMessage(req, res) {
 			senderEmail: req.user.email,
 			senderName: `${req.user.firstName} ${req.user.lastName}`,
 			senderRole: "admin",
+			recipientEmail: recipientEmail,
+			recipientName: recipientName,
 			category: category,
 			subject: subject,
 			message: message,
-			status: "replied", // Admin-initiated messages start as replied
-			// Store recipient info in the first reply for context
-			replies: [
-				{
-					senderEmail: recipientEmail,
-					senderName: recipientName,
-					senderRole: "user",
-					message: `[Admin initiated message to ${recipientName}]`,
-					createdAt: new Date(),
-				},
-			],
+			status: "pending", // Start as pending, waiting for user reply
+			userRead: false, // User hasn't read this admin message yet
+			replies: [],
 		});
 
 		await newMessage.save();

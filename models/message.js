@@ -14,6 +14,15 @@ const messageSchema = new mongoose.Schema({
 		enum: ["user", "admin"],
 		required: true,
 	},
+	// Recipient email (for admin-to-user messages)
+	recipientEmail: {
+		type: String,
+		default: null,
+	},
+	recipientName: {
+		type: String,
+		default: null,
+	},
 	category: {
 		type: String,
 		enum: ["chat", "orders", "activity", "promo"],
