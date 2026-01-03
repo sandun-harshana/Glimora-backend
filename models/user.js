@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
             type : Number,
             default : 0
         },
+        membershipTier : {
+            type : String,
+            enum: ["Bronze", "Silver", "Gold", "Diamond"],
+            default : "Bronze"
+        },
         wishlist : [
             {
                 productId: {

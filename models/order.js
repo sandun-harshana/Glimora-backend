@@ -43,11 +43,27 @@ const orderSchema = new mongoose.Schema(
         },
         phone : {
             type : String,
-            required : true
+            required : false,
+            default : "Not provided"
         },
         address : {
             type : String,
             required : true
+        },
+        subtotal : {
+            type : Number,
+            required : false,
+            default : 0
+        },
+        discount : {
+            type : Number,
+            required : false,
+            default : 0
+        },
+        membershipTier : {
+            type : String,
+            enum: ["Bronze", "Silver", "Gold", "Diamond"],
+            default : "Bronze"
         },
         total : {
             type : Number,

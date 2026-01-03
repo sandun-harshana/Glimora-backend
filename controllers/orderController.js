@@ -66,7 +66,7 @@ export async function createOrder(req, res) {
 		}
 
 		const itemsToBeAdded = [];
-		let total = 0;
+		let subtotal = 0;
 
 		for (let i = 0; i < itemsInRequest.length; i++) {
 			const item = itemsInRequest[i];
@@ -100,8 +100,24 @@ export async function createOrder(req, res) {
 				image: product.images[0],
 			});
 
-			total += product.price * item.quantity;
+			subtotal += product.price * item.quantity;
 		}
+
+		// Get user's current membership tier and calculate discount
+		const currentUser = await User.findOne({ email: user.email });
+		const membershipTier = currentUser.membershipTier || "Bronze";
+		
+		// Membership discount rates
+		const discountRates = {
+			Bronze: 0,
+			Silver: 0.05,  // 5%
+			Gold: 0.10,    // 10%
+			Diamond: 0.15  // 15%
+		};
+		
+		const discountRate = discountRates[membershipTier] || 0;
+		const discount = Math.floor(subtotal * discountRate);
+		const total = subtotal - discount
 
 		const newOrder = new Order({
 			orderID: newOrderID,
@@ -110,6 +126,9 @@ export async function createOrder(req, res) {
 			email: user.email,
 			phone: phone,
 			address: req.body.address,
+			subtotal: subtotal,
+			discount: discount,
+			membershipTier: membershipTier,
 			total: total,
 			paymentMethod: req.body.paymentMethod || "cash-on-delivery",
 			paymentStatus: req.body.paymentMethod === "cash-on-delivery" ? "unpaid" : "pending",
@@ -127,9 +146,24 @@ export async function createOrder(req, res) {
 
 		// Award points to user (1 point per 100 LKR spent)
 		const pointsToAdd = Math.floor(total / 100);
+		const newTotalPoints = currentUser.points + pointsToAdd;
+		
+		// Update membership tier based on total points
+		let newMembershipTier = "Bronze";
+		if (newTotalPoints >= 1000) {
+			newMembershipTier = "Diamond";
+		} else if (newTotalPoints >= 500) {
+			newMembershipTier = "Gold";
+		} else if (newTotalPoints >= 200) {
+			newMembershipTier = "Silver";
+		}
+		
 		await User.updateOne(
 			{ email: user.email },
-			{ $inc: { points: pointsToAdd } }
+			{ 
+				$inc: { points: pointsToAdd },
+				membershipTier: newMembershipTier
+			}
 		);
 
 		// for(let i=0; i<itemsToBeAdded.length; i++){
@@ -158,6 +192,9 @@ export async function createOrder(req, res) {
 			message: "Order created successfully",
 			order: savedOrder,
 			pointsEarned: pointsToAdd,
+			discountApplied: discount,
+			membershipTier: membershipTier,
+			newMembershipTier: newMembershipTier,
 		});
 	} catch (err) {
 		console.log(err);

@@ -509,3 +509,64 @@ export async function updateUserProfile(req, res) {
 		});
 	}
 }
+
+export async function getMembershipInfo(req, res) {
+	try {
+		if (req.user == null) {
+			return res.status(401).json({
+				message: "Unauthorized",
+			});
+		}
+
+		const user = await User.findOne({ email: req.user.email });
+		
+		if (!user) {
+			return res.status(404).json({
+				message: "User not found",
+			});
+		}
+
+		// Calculate membership tier based on points
+		let membershipTier = "Bronze";
+		if (user.points >= 1000) {
+			membershipTier = "Diamond";
+		} else if (user.points >= 500) {
+			membershipTier = "Gold";
+		} else if (user.points >= 200) {
+			membershipTier = "Silver";
+		}
+
+		// Update tier if changed
+		if (user.membershipTier !== membershipTier) {
+			await User.updateOne(
+				{ email: user.email },
+				{ membershipTier: membershipTier }
+			);
+		}
+
+		// Calculate discount rate
+		const discountRates = {
+			Bronze: 0,
+			Silver: 5,
+			Gold: 10,
+			Diamond: 15
+		};
+
+		res.json({
+			points: user.points,
+			membershipTier: membershipTier,
+			discountRate: discountRates[membershipTier],
+			nextTier: membershipTier === "Diamond" ? null : 
+					  membershipTier === "Gold" ? "Diamond" :
+					  membershipTier === "Silver" ? "Gold" : "Silver",
+			pointsToNextTier: membershipTier === "Diamond" ? 0 :
+							  membershipTier === "Gold" ? 1000 - user.points :
+							  membershipTier === "Silver" ? 500 - user.points : 200 - user.points
+		});
+	} catch (err) {
+		console.error("Error getting membership info:", err);
+		res.status(500).json({
+			message: "Failed to get membership info",
+		});
+	}
+}
