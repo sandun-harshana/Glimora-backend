@@ -139,12 +139,14 @@ export async function googleLogin(req, res) {
 	const token = req.body.token;
 
 	if (token == null) {
+		console.error("Google login: Token is missing");
 		res.status(400).json({
 			message: "Token is required",
 		});
 		return;
 	}
 	try {
+		console.log("Google login: Fetching user info from Google...");
 		const googleResponse = await axios.get(
 			"https://www.googleapis.com/oauth2/v3/userinfo",
 			{
@@ -155,22 +157,25 @@ export async function googleLogin(req, res) {
 		);
 
 		const googleUser = googleResponse.data;
+		console.log("Google login: User info received:", googleUser.email);
 
 		const user = await User.findOne({
 			email: googleUser.email,
 		});
 
 		if (user == null) {
+			console.log("Google login: Creating new user");
 			const newUser = new User({
 				email: googleUser.email,
-				firstName: googleUser.given_name,
-				lastName: googleUser.family_name,
-				password: "abc",
-				isEmailVerified: googleUser.email_verified,
-				image: googleUser.picture,
+				firstName: googleUser.given_name || "User",
+				lastName: googleUser.family_name || "",
+				password: bcrypt.hashSync(Math.random().toString(36).slice(-8), 10),
+				isEmailVerified: googleUser.email_verified || true,
+				image: googleUser.picture || "",
 			});
 
 			let savedUser = await newUser.save();
+			console.log("Google login: New user created successfully");
 
 			const jwtToken = jwt.sign(
 				{
@@ -198,12 +203,21 @@ export async function googleLogin(req, res) {
 			return;
 		} else {
 			//login the user
+			console.log("Google login: Existing user found");
 			if (user.isBlock) {
+				console.log("Google login: User is blocked");
 				res.status(403).json({
 					message: "Your account has been blocked. Please contact admin.",
 				});
 				return;
 			}
+			
+			// Update user image if changed
+			if (googleUser.picture && user.image !== googleUser.picture) {
+				user.image = googleUser.picture;
+				await user.save();
+			}
+			
 			const jwtToken = jwt.sign(
 				{
 					email: user.email,
@@ -215,6 +229,7 @@ export async function googleLogin(req, res) {
 				},
 				process.env.JWT_SECRET
 			);
+			console.log("Google login: Login successful");
 			res.json({
 				message: "Login successful",
 				token: jwtToken,
@@ -230,8 +245,11 @@ export async function googleLogin(req, res) {
 			return;
 		}
 	} catch (err) {
+		console.error("Google login error:", err);
+		console.error("Error details:", err.response?.data || err.message);
 		res.status(500).json({
 			message: "Failed to login with google",
+			error: err.message,
 		});
 		return;
 	}
